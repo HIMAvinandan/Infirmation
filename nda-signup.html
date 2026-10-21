@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVI – NDA Registration · Infirmation</title>
+  <style>
+    body { margin: 0; background: #fff; color: #495762; font-family: Karla, Tahoma, Arial, sans-serif; line-height: 1.6; }
+    .wrap { max-width: 560px; margin: 0 auto; padding: 36px 20px 48px; }
+    h1 { font-family: Montserrat, Tahoma, Arial, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 8px; }
+    .sub { font-size: 12px; color: #8193a1; margin: 0 0 20px; }
+    label { display: block; font-family: Montserrat, Tahoma, Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #8193a1; margin: 0 0 6px; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="password"], input[type="date"] {
+      width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid #eee; border-radius: 4px; font-size: 15px; color: #495762; margin: 0 0 12px;
+    }
+    .check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; margin: 14px 0 18px; }
+    .check input { margin-top: 3px; transform: scale(1.15); }
+    button, .btn {
+      width: 100%; padding: 13px; border: 0; border-radius: 3px; background: #495762; color: #fff;
+      font-family: Montserrat, Tahoma, Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer; margin: 0 0 10px;
+    }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .btn-google { background: #fff; color: #495762; border: 1px solid #ddd; }
+    .accent { background: #f9f9f9; border-left: 4px solid #8193a1; padding: 12px 14px; font-size: 13px; margin: 0 0 18px; }
+    .err { color: #a33; font-size: 13px; margin: 0 0 12px; display: none; }
+    .foot { margin-top: 24px; font-size: 12px; color: #9da4aa; text-align: center; }
+    a { color: #495762; font-weight: 700; }
+    .divider { text-align: center; font-size: 12px; color: #9da4aa; margin: 14px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:16px;">
+      <img src="https://publinc.wordpress.com/wp-content/uploads/2024/08/shield-against-enemy.png" alt="AVI" width="100" style="display:block;margin:0 auto 12px;border:0;">
+      <h1>AVI – △▽▯- Chronograph</h1>
+      <p class="sub">NDA registration · Email · Google</p>
+    </div>
+
+    <div class="accent">
+      Details are collected <strong>once</strong>. Sign up with Google or email; your patient profile is created after you accept the NDA.
+      <br><span style="font-size:12px;color:#8193a1;">No phone SMS — stays on free Spark (no Blaze).</span>
+    </div>
+
+    <p id="err" class="err"></p>
+
+    <label for="displayName">Full name *</label>
+    <input type="text" id="displayName" required autocomplete="name">
+
+    <label for="phoneOptional">Phone <span style="text-transform:none;font-weight:500;color:#9da4aa;">(optional contact only — not for login)</span></label>
+    <input type="tel" id="phoneOptional" autocomplete="tel" placeholder="+91…">
+
+    <label for="dob">Date of birth <span style="text-transform:none;font-weight:500;color:#9da4aa;">(optional)</span></label>
+    <input type="date" id="dob" autocomplete="bday">
+
+    <label class="check">
+      <input type="checkbox" id="nda" required>
+      <span>I accept the <a href="https://himavinandan.github.io/Infirmation/administrative-non-disclosure.html" target="_blank" rel="noopener">Administrative Non-Disclosure</a> and confidentiality terms, and agree to create my patient profile.</span>
+    </label>
+
+    <button type="button" class="btn btn-google" id="btn-google">Accept NDA &amp; continue with Google</button>
+
+    <div class="divider">— or email + password —</div>
+
+    <form id="nda-form">
+      <label for="email">Email *</label>
+      <input type="email" id="email" required autocomplete="email">
+      <label for="password">Password * <span style="text-transform:none;font-weight:500;color:#9da4aa;">(min 8)</span></label>
+      <input type="password" id="password" required minlength="8" autocomplete="new-password">
+      <button type="submit" id="submit-btn">Accept NDA &amp; create profile</button>
+    </form>
+
+    <p class="foot">
+      Already registered? <a href="login.html">Sign in</a><br>
+      <a href="https://himavinandan.github.io/Infirmation/">← Infirmation</a>
+    </p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-app.js"></script>
+  <script>
+  (function () {
+    var err = document.getElementById('err');
+    function showErr(m) { err.textContent = m; err.style.display = 'block'; }
+
+    function requireNdaAndName() {
+      var displayName = document.getElementById('displayName').value.trim();
+      if (!displayName) { showErr('Full name is required.'); return null; }
+      if (!document.getElementById('nda').checked) { showErr('You must accept the NDA.'); return null; }
+      return displayName;
+    }
+
+    async function ensurePatientProfile(user, displayName) {
+      var fb = InfirmationFB.ensureFirebase();
+      var ref = fb.db.collection('patients').doc(user.uid);
+      var snap = await ref.get();
+      if (snap.exists) return snap.data();
+      var now = firebase.firestore.FieldValue.serverTimestamp();
+      var ndaVersion = window.NDA_VERSION || 'unspecified';
+      var phone = document.getElementById('phoneOptional').value.trim() || '';
+      var data = {
+        displayName: displayName || user.displayName || '',
+        email: user.email || '',
+        phone: phone,
+        dob: document.getElementById('dob').value || '',
+        ndaAccepted: true,
+        ndaVersion: ndaVersion,
+        ndaAcceptedAt: now,
+        status: 'nda_accepted',
+        createdAt: now,
+        updatedAt: now
+      };
+      await ref.set(data);
+      await ref.collection('consents').doc('nda').set({
+        version: ndaVersion,
+        acceptedAt: now,
+        userAgent: navigator.userAgent || ''
+      });
+      if (displayName && !user.displayName) {
+        try { await user.updateProfile({ displayName: displayName }); } catch (e) {}
+      }
+      await InfirmationFB.notifyAdmin({
+        _subject: 'AVI Chronograph · NDA accepted · New patient',
+        event: 'nda_signup',
+        aspirant_name: data.displayName,
+        email: data.email,
+        phone: data.phone,
+        ndaVersion: ndaVersion,
+        auth_provider: (user.providerData[0] && user.providerData[0].providerId) || 'unknown'
+      });
+      return data;
+    }
+
+    function goSuccess(name) {
+      var success = (window.SUCCESS_MESSAGE_URL || 'success_message.html')
+        + '?kind=nda&name=' + encodeURIComponent(name || '');
+      window.location.href = success;
+    }
+
+    function fbOrFail() {
+      var fb = InfirmationFB.ensureFirebase();
+      if (!fb) { showErr('Firebase is not configured. Paste keys into js/firebase-config.js'); return null; }
+      return fb;
+    }
+
+    document.getElementById('btn-google').addEventListener('click', async function () {
+      var name = requireNdaAndName();
+      if (!name) return;
+      var fb = fbOrFail();
+      if (!fb) return;
+      try {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        var cred = await fb.auth.signInWithPopup(provider);
+        await ensurePatientProfile(cred.user, name);
+        goSuccess(name);
+      } catch (ex) {
+        showErr(ex.message || 'Google registration failed');
+      }
+    });
+
+    document.getElementById('nda-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var name = requireNdaAndName();
+      if (!name) return;
+      var fb = fbOrFail();
+      if (!fb) return;
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Creating profile…';
+      try {
+        var cred = await fb.auth.createUserWithEmailAndPassword(email, password);
+        await ensurePatientProfile(cred.user, name);
+        goSuccess(name);
+      } catch (ex) {
+        showErr(ex.message || 'Registration failed');
+        btn.disabled = false;
+        btn.textContent = 'Accept NDA & create profile';
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

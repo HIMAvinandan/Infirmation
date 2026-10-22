@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administrative Non-Disclosure — Abstract</title>
+<style>
+body{margin:0;background:#fff;color:#495762;font-family:Arial,sans-serif;line-height:1.7}
+.wrap{max-width:760px;margin:auto;padding:48px 24px}
+h1,h2{color:#495762}
+h1{font-size:32px;line-height:1.15}
+h2{font-size:21px;margin-top:34px;padding-bottom:8px;border-bottom:1px solid #eee}
+.note{background:#f9f9f9;border-left:4px solid #495762;padding:16px 18px}
+.meta{font-size:13px;color:#8193a1}
+a{color:#495762;font-weight:700}
+.button{display:inline-block;background:#495762;color:#fff;padding:10px 16px;border-radius:4px;text-decoration:none;margin-top:8px}
+
+.reg{margin-top:32px;padding-top:24px;border-top:1px solid #eee}
+.reg h2{font-size:1.05rem;margin:0 0 8px}
+.reg label{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8193a1;margin:12px 0 6px}
+.reg input[type=text],.reg input[type=email],.reg input[type=tel],.reg input[type=password],.reg input[type=date]{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid #eee;border-radius:4px;font-size:15px;color:#495762}
+.reg .check{display:flex;gap:10px;align-items:flex-start;font-size:13px;margin:14px 0;line-height:1.45}
+.reg .check input{margin-top:3px;transform:scale(1.15)}
+.reg button{width:100%;padding:13px;border:0;border-radius:4px;background:#495762;color:#fff;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;margin:8px 0}
+.reg .btn-google{background:#fff;color:#495762;border:1px solid #ddd}
+.reg .err{color:#a33;font-size:13px;display:none;margin:8px 0}
+.reg .divider{text-align:center;font-size:12px;color:#9da4aa;margin:12px 0}
+
+</style>
+</head>
+<body>
+<main class="wrap">
+<p class="meta">AVI – △▽▯- CHRONOGRAPH</p>
+<h1>Administrative Non-Disclosure</h1>
+<p class="meta">Public abstract of the Psychiatric Administration information-governance framework</p>
+
+<div class="note"><strong>Status:</strong> This page is an abstract. It is not intended to replace the full administrative instrument.</div>
+
+<h2>Purpose</h2>
+<p>The framework establishes protections for confidential, clinical, therapeutic, administrative, financial, technical, security, proprietary, research and evidentiary information handled within the Psychiatric Administration.</p>
+
+<h2>Core principles</h2>
+<ul>
+<li>Access according to lawful purpose, necessity and authority.</li>
+<li>Minimum necessary involvement in disclosure and information handling.</li>
+<li>Continuing confidentiality, subject to applicable law and lawful exceptions.</li>
+<li>Protection of records, custody, integrity and provenance.</li>
+<li>Controlled disclosure rather than unrestricted disclosure.</li>
+<li>Security and incident-response procedures appropriate to the information involved.</li>
+<li>Separation of financial administration from unnecessary clinical disclosure.</li>
+<li>Technological neutrality, including future automated and AI-assisted processing.</li>
+<li>Continuity through relocation, transfer, amendment and technological change.</li>
+</ul>
+
+<h2>Information lifecycle</h2>
+<p><strong>Creation → Collection → Classification → Access → Use → Disclosure → Transmission → Storage → Modification → Archival → Transfer → Retention → Lawful Destruction.</strong></p>
+
+<h2>Legal and professional qualification</h2>
+<p>The framework is expressly subject to mandatory applicable law, professional regulation, patient rights and competent judicial or regulatory authority. A published document should not be treated as creating an absolute confidentiality obligation where disclosure is legally required or otherwise lawfully permitted.</p>
+
+<h2>Full instrument</h2>
+<p>The complete instrument should remain separately versioned and linked from the administrative directory. This separation keeps the public landing page readable while preserving the substantive document independently.</p>
+<a class="button" href="Psychiatric%20Administration%20Constitution/Psychiatric%20Administration%20Linear%20Expansion/I/Psychiatric_Administration_Linear_Expansion_I.html">Open Administration I →</a>
+<p style="margin-top:28px"><a href="index.html">← Back to Index</a></p>
+
+<section class="reg" id="register">
+  <h2>Agree and create patient profile</h2>
+  <p class="meta" style="margin:0 0 12px">This is the operative acceptance step for the Administrative Non-Disclosure framework (and the linked Administration instruments). Identity is stored <strong>once</strong>. Return visits use <a href="login.html">Sign in</a> only — no second agreement page.</p>
+  <p class="meta" style="margin:0 0 12px">Login methods: <strong>Google</strong> or <strong>Email/Password</strong> (no phone SMS / no Blaze required).</p>
+  <p id="err" class="err"></p>
+
+  <label for="displayName">Full name *</label>
+  <input type="text" id="displayName" required autocomplete="name">
+
+  <label for="phoneOptional">Phone <span style="text-transform:none;font-weight:500;color:#9da4aa">(optional contact)</span></label>
+  <input type="tel" id="phoneOptional" autocomplete="tel" placeholder="+91…">
+
+  <label for="dob">Date of birth <span style="text-transform:none;font-weight:500;color:#9da4aa">(optional)</span></label>
+  <input type="date" id="dob" autocomplete="bday">
+
+  <label class="check">
+    <input type="checkbox" id="nda" required>
+    <span>I have read this Administrative Non-Disclosure abstract and the linked Psychiatric Administration instruments, and I accept them for the purpose of creating my patient profile under HIM Dr. Avinandan Manjit Roy I.</span>
+  </label>
+
+  <button type="button" class="btn-google" id="btn-google">Accept &amp; continue with Google</button>
+  <div class="divider">— or email + password —</div>
+  <form id="nda-form">
+    <label for="email">Email *</label>
+    <input type="email" id="email" required autocomplete="email">
+    <label for="password">Password * <span style="text-transform:none;font-weight:500;color:#9da4aa">(min 8)</span></label>
+    <input type="password" id="password" required minlength="8" autocomplete="new-password">
+    <button type="submit" id="submit-btn">Accept &amp; create profile</button>
+  </form>
+</section>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/firebase-app.js"></script>
+<script>
+(function () {
+  var err = document.getElementById('err');
+  function showErr(m) { if (!err) return; err.textContent = m; err.style.display = 'block'; }
+  function requireAccept() {
+    var name = (document.getElementById('displayName') || {}).value || '';
+    name = name.trim();
+    if (!name) { showErr('Full name is required.'); return null; }
+    if (!(document.getElementById('nda') || {}).checked) { showErr('You must accept to continue.'); return null; }
+    return name;
+  }
+  async function ensurePatientProfile(user, displayName) {
+    var fb = InfirmationFB.ensureFirebase();
+    var ref = fb.db.collection('patients').doc(user.uid);
+    var snap = await ref.get();
+    if (snap.exists) return snap.data();
+    var now = firebase.firestore.FieldValue.serverTimestamp();
+    var ndaVersion = window.NDA_VERSION || 'administrative-non-disclosure-2026-10';
+    var phone = ((document.getElementById('phoneOptional') || {}).value || '').trim();
+    var data = {
+      displayName: displayName || user.displayName || '',
+      email: user.email || '',
+      phone: phone,
+      dob: ((document.getElementById('dob') || {}).value || ''),
+      ndaAccepted: true,
+      ndaVersion: ndaVersion,
+      ndaAcceptedAt: now,
+      status: 'nda_accepted',
+      createdAt: now,
+      updatedAt: now
+    };
+    await ref.set(data);
+    await ref.collection('consents').doc('nda').set({
+      version: ndaVersion,
+      acceptedAt: now,
+      userAgent: navigator.userAgent || '',
+      instrument: 'administrative-non-disclosure'
+    });
+    if (displayName && !user.displayName) {
+      try { await user.updateProfile({ displayName: displayName }); } catch (e) {}
+    }
+    await InfirmationFB.notifyAdmin({
+      _subject: 'AVI Chronograph · Non-Disclosure accepted · New patient',
+      event: 'admin_nd_signup',
+      aspirant_name: data.displayName,
+      email: data.email,
+      phone: data.phone,
+      ndaVersion: ndaVersion
+    });
+    return data;
+  }
+  function goSuccess(name) {
+    var u = (window.SUCCESS_MESSAGE_URL || 'success_message.html') + '?kind=nda&name=' + encodeURIComponent(name || '');
+    window.location.href = u;
+  }
+  function fbOrFail() {
+    var fb = InfirmationFB.ensureFirebase();
+    if (!fb) { showErr('Firebase is not configured. Paste keys into js/firebase-config.js'); return null; }
+    return fb;
+  }
+  var g = document.getElementById('btn-google');
+  if (g) g.addEventListener('click', async function () {
+    var name = requireAccept();
+    if (!name) return;
+    var fb = fbOrFail();
+    if (!fb) return;
+    try {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      var cred = await fb.auth.signInWithPopup(provider);
+      await ensurePatientProfile(cred.user, name);
+      goSuccess(name);
+    } catch (ex) { showErr(ex.message || 'Google sign-in failed'); }
+  });
+  var form = document.getElementById('nda-form');
+  if (form) form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var name = requireAccept();
+    if (!name) return;
+    var fb = fbOrFail();
+    if (!fb) return;
+    var btn = document.getElementById('submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Creating profile…'; }
+    try {
+      var cred = await fb.auth.createUserWithEmailAndPassword(
+        document.getElementById('email').value.trim(),
+        document.getElementById('password').value
+      );
+      await ensurePatientProfile(cred.user, name);
+      goSuccess(name);
+    } catch (ex) {
+      showErr(ex.message || 'Registration failed');
+      if (btn) { btn.disabled = false; btn.textContent = 'Accept & create profile'; }
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

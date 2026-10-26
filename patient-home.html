@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVI – Patient home · Infirmation</title>
+  <style>
+    body{margin:0;background:#fff;color:#495762;font-family:Karla,Tahoma,Arial,sans-serif;line-height:1.65}
+    .wrap{max-width:640px;margin:0 auto;padding:40px 20px 48px}
+    h1{font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:22px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 8px;text-align:center}
+    .sub{font-size:12px;color:#8193a1;margin:0 0 24px;text-align:center}
+    .card{border:1px solid #eee;border-radius:8px;padding:18px 20px;margin:0 0 16px}
+    .card h2{font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin:0 0 12px;color:#8193a1}
+    .row{font-size:14px;margin:0 0 6px}
+    .row strong{display:inline-block;min-width:110px;color:#8193a1;font-weight:600}
+    .btn{display:inline-block;margin:6px 8px 6px 0;padding:10px 16px;background:#495762;color:#fff;text-decoration:none;font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;border-radius:3px}
+    .btn.ghost{background:#fff;color:#495762;border:1px solid #495762}
+    .warn{background:#fff8f0;border-left:4px solid #c90;padding:12px 14px;font-size:13px;margin:0 0 16px}
+    .err{background:#fff5f5;border-left:4px solid #a33;padding:12px 14px;font-size:13px;margin:0 0 16px}
+    .ok{background:#f0f7f4;border-left:4px solid #2a6;padding:12px 14px;font-size:13px;margin:0 0 16px}
+    #loading{font-size:14px;color:#8193a1;text-align:center}
+    a{color:#495762;font-weight:700}
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="text-align:center;margin-bottom:8px">
+      <img src="https://publinc.wordpress.com/wp-content/uploads/2024/08/shield-against-enemy.png" alt="AVI" width="90" style="display:block;margin:0 auto 12px;border:0">
+      <h1>Patient home</h1>
+      <p class="sub">Session from Firebase Auth · profile from Firestore when available</p>
+    </div>
+    <p id="loading">Loading…</p>
+    <div id="msg" class="hidden"></div>
+    <div id="panel" class="hidden">
+      <div class="card">
+        <h2>Signed-in account</h2>
+        <p class="row"><strong>Name</strong> <span id="a-name">—</span></p>
+        <p class="row"><strong>Email</strong> <span id="a-email">—</span></p>
+        <p class="row"><strong>UID</strong> <span id="a-uid" style="font-size:11px;word-break:break-all">—</span></p>
+      </div>
+      <div class="card">
+        <h2>Patient profile (Firestore)</h2>
+        <p class="row"><strong>Name</strong> <span id="p-name">—</span></p>
+        <p class="row"><strong>Email</strong> <span id="p-email">—</span></p>
+        <p class="row"><strong>Phone</strong> <span id="p-phone">—</span></p>
+        <p class="row"><strong>DOB</strong> <span id="p-dob">—</span></p>
+        <p class="row"><strong>Status</strong> <span id="p-status">—</span></p>
+        <p class="row"><strong>NDA</strong> <span id="p-nda">—</span></p>
+      </div>
+      <div class="card">
+        <h2>Reports</h2>
+        <a class="btn" href="Reports/Age_Timeline_Patient_Form.html">Age / Incidental Timeline</a>
+        <a class="btn" href="Reports/Patient_Drug_Use_Report_Form.html">Transfer / Drug report</a>
+        <a class="btn ghost" href="index.html">Infirmation index</a>
+      </div>
+      <p style="font-size:12px;color:#9da4aa">
+        <a href="#" id="sign-out">Sign out</a>
+        · <a href="administrative-non-disclosure.html#register">Non-Disclosure</a>
+        · <a href="login.html">Login</a>
+      </p>
+    </div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+  (function () {
+    var loading = document.getElementById('loading');
+    var panel = document.getElementById('panel');
+    var msg = document.getElementById('msg');
+
+    function showMsg(type, html) {
+      msg.className = type;
+      msg.innerHTML = html;
+      msg.classList.remove('hidden');
+    }
+    function stopLoading() {
+      loading.classList.add('hidden');
+      panel.classList.remove('hidden');
+    }
+    function timeout(ms, label) {
+      return new Promise(function (_, reject) {
+        setTimeout(function () { reject(new Error(label + ' timed out (' + ms + 'ms)')); }, ms);
+      });
+    }
+    function race(p, ms, label) {
+      return Promise.race([p, timeout(ms, label)]);
+    }
+
+    // Hard stop: never leave Loading more than 8s total
+    var hard = setTimeout(function () {
+      if (!loading.classList.contains('hidden')) {
+        stopLoading();
+        showMsg('err', 'Still loading after 8s. Auth or Firestore is not responding. Open the browser console for details, publish Native Firestore rules, and confirm <code>js/firebase-config.js</code> loads.');
+      }
+    }, 8000);
+
+    async function main() {
+      if (!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey) {
+        clearTimeout(hard);
+        stopLoading();
+        showMsg('err', 'Missing <code>js/firebase-config.js</code>.');
+        return;
+      }
+      if (!window.firebase) {
+        clearTimeout(hard);
+        stopLoading();
+        showMsg('err', 'Firebase SDK failed to load (network / blocked gstatic).');
+        return;
+      }
+      if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      // Mobile / some networks: force long polling so Firestore does not hang silently
+      try {
+        firebase.firestore().settings({ experimentalForceLongPolling: true, merge: true });
+      } catch (e) { console.warn('firestore settings', e); }
+      var auth = firebase.auth();
+      var db = firebase.firestore();
+
+      var user;
+      try {
+        user = await race(new Promise(function (resolve) {
+          var u = auth.currentUser;
+          if (u) { resolve(u); return; }
+          var unsub = auth.onAuthStateChanged(function (x) { unsub(); resolve(x || null); });
+        }), 6000, 'Auth');
+      } catch (e) {
+        clearTimeout(hard);
+        stopLoading();
+        showMsg('err', e.message || String(e));
+        return;
+      }
+
+      if (!user) {
+        clearTimeout(hard);
+        window.location.replace('login.html?next=patient-home.html');
+        return;
+      }
+
+      document.getElementById('a-name').textContent = user.displayName || '—';
+      document.getElementById('a-email').textContent = user.email || '—';
+      document.getElementById('a-uid').textContent = user.uid;
+
+      // Show Auth immediately — do not wait for Firestore
+      clearTimeout(hard);
+      stopLoading();
+
+      try {
+        var snap = await race(db.collection('patients').doc(user.uid).get(), 15000, 'Firestore');
+        if (snap.exists) {
+          var p = snap.data();
+          document.getElementById('p-name').textContent = p.displayName || '—';
+          document.getElementById('p-email').textContent = p.email || user.email || '—';
+          document.getElementById('p-phone').textContent = p.phone || '—';
+          document.getElementById('p-dob').textContent = p.dob || '—';
+          document.getElementById('p-status').textContent = p.status || '—';
+          document.getElementById('p-nda').textContent = (p.ndaVersion || '') + (p.ndaAccepted ? ' · accepted' : '');
+          showMsg('ok', 'Patient profile loaded from Firestore.');
+        } else {
+          document.getElementById('p-status').textContent = 'no patients/' + user.uid + ' document';
+          showMsg('warn', 'Signed in, but <strong>no Firestore patient profile</strong>. Complete <a href="administrative-non-disclosure.html#register">Non-Disclosure registration</a> (name + accept). If you already did, Firestore rules/write failed — publish Native rules and retry.');
+        }
+      } catch (e) {
+        document.getElementById('p-status').textContent = 'read failed';
+        showMsg('err', 'Firestore error: <code>' + (e.message || e) + '</code>. Also try: enable Cloud Firestore API in Google Cloud, disable ad-block for this site, test on desktop Wi‑Fi, and confirm App Check is not enforced without a token. Console → create patients/YOUR_UID manually to test.');
+      }
+
+      document.getElementById('sign-out').onclick = async function (e) {
+        e.preventDefault();
+        await auth.signOut();
+        window.location.replace('login.html');
+      };
+    }
+
+    main().catch(function (e) {
+      clearTimeout(hard);
+      stopLoading();
+      showMsg('err', 'Fatal: ' + (e.message || e));
+      console.error(e);
+    });
+  })();
+  </script>
+</body>
+</html>

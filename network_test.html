@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AVI – Network test · Infirmation</title>
+  <style>
+    body{margin:0;background:#fafafa;color:#495762;font-family:Karla,Tahoma,Arial,sans-serif;font-size:15px;line-height:1.55}
+    .wrap{max-width:640px;margin:0 auto;padding:28px 16px 48px}
+    h1{font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:0 0 6px;text-align:center}
+    .sub{font-size:12px;color:#8193a1;text-align:center;margin:0 0 24px}
+    .card{background:#fff;border:1px solid #eee;border-radius:8px;padding:16px 18px;margin:0 0 12px}
+    .card h2{font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8193a1;margin:0 0 10px}
+    button{
+      width:100%;padding:13px;border:0;border-radius:3px;background:#495762;color:#fff;
+      font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;margin:0 0 8px
+    }
+    button.ghost{background:#fff;color:#495762;border:1px solid #495762}
+    button:disabled{opacity:.55;cursor:wait}
+    .row{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f3f3f3;font-size:13px}
+    .row:last-child{border-bottom:0}
+    .badge{flex-shrink:0;min-width:72px;text-align:center;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;font-family:Montserrat,Tahoma,Arial,sans-serif}
+    .wait{background:#f0f0f0;color:#8193a1}
+    .ok{background:#e8f5e9;color:#2e7d32}
+    .fail{background:#ffebee;color:#c62828}
+    .skip{background:#fff8e1;color:#f57f17}
+    .detail{flex:1;word-break:break-word}
+    .detail code{font-size:11px;background:#f5f5f5;padding:1px 4px;border-radius:2px}
+    .meta{font-size:11px;color:#9da4aa;margin-top:2px;line-height:1.45}
+    .summary{text-align:center;font-family:Montserrat,Tahoma,Arial,sans-serif;font-size:13px;margin:12px 0}
+    a{color:#495762;font-weight:700}
+    #log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
+    .check{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}
+    .check input{transform:scale(1.15)}
+    #map-link{font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img src="https://publinc.wordpress.com/wp-content/uploads/2024/08/shield-against-enemy.png" width="90" alt="AVI" style="display:block;margin:0 auto 12px;border:0">
+    <h1>Network test</h1>
+    <p class="sub">Connectivity · location · signal · Auth · Firestore</p>
+
+    <div class="card">
+      <h2>Run</h2>
+      <label class="check"><input type="checkbox" id="opt-geo" checked> Request device location (GPS / network)</label>
+      <label class="check"><input type="checkbox" id="opt-ip" checked> Public IP / network location (ipapi.co)</label>
+      <label class="check"><input type="checkbox" id="opt-fs-write"> Write full report to Firestore if signed in</label>
+      <button type="button" id="btn-run">Run full test</button>
+      <button type="button" class="ghost" id="btn-copy">Copy results</button>
+      <p class="summary" id="summary">Idle — press Run full test</p>
+    </div>
+
+    <div class="card">
+      <h2>Results</h2>
+      <div id="results"></div>
+      <p id="map-link" class="meta" style="margin-top:10px"></p>
+    </div>
+
+    <div class="card">
+      <h2>Collected data (JSON)</h2>
+      <div id="log"></div>
+    </div>
+
+    <p style="text-align:center;font-size:12px;color:#9da4aa;margin-top:20px">
+      <a href="patient-home.html">Patient home</a> ·
+      <a href="login.html">Sign in</a> ·
+      <a href="index.html">Infirmation</a>
+    </p>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+(function () {
+  var resultsEl = document.getElementById("results");
+  var logEl = document.getElementById("log");
+  var summaryEl = document.getElementById("summary");
+  var mapLink = document.getElementById("map-link");
+  var report = {};
+  var rowIds = [];
+
+  function logLine(msg) {
+    console.log(msg);
+  }
+
+  function addRow(id, title) {
+    var div = document.createElement("div");
+    div.className = "row";
+    div.innerHTML = '<span class="badge wait" id="b-' + id + '">…</span>' +
+      '<div class="detail"><strong>' + title + '</strong><div class="meta" id="m-' + id + '">Waiting</div></div>';
+    resultsEl.appendChild(div);
+    rowIds.push(id);
+  }
+
+  function setRow(id, status, detail) {
+    var b = document.getElementById("b-" + id);
+    var m = document.getElementById("m-" + id);
+    if (!b) return;
+    b.className = "badge " + status;
+    b.textContent = status === "ok" ? "OK" : status === "fail" ? "FAIL" : status === "skip" ? "SKIP" : "…";
+    if (m) m.innerHTML = detail || "";
+  }
+
+  function race(p, ms, label) {
+    return Promise.race([
+      p,
+      new Promise(function (_, rej) {
+        setTimeout(function () { rej(new Error(label + " timed out (" + ms + "ms)")); }, ms);
+      })
+    ]);
+  }
+
+  function setupRows() {
+    resultsEl.innerHTML = "";
+    mapLink.innerHTML = "";
+    rowIds = [];
+    report = {
+      startedAt: new Date().toISOString(),
+      page: location.href,
+      userAgent: navigator.userAgent
+    };
+    [
+      ["online", "Browser online"],
+      ["https", "Page is HTTPS"],
+      ["connection", "Network Information API (type / signal proxy)"],
+      ["geo", "Device location (Geolocation API)"],
+      ["ip", "Public IP & network location"],
+      ["cdn", "Firebase SDK (gstatic)"],
+      ["config", "firebase-config.js"],
+      ["init", "Firebase initializeApp"],
+      ["auth", "Auth state"],
+      ["fs-settings", "Firestore long-polling"],
+      ["fs-read", "Firestore read"],
+      ["fs-write", "Firestore write probe / report"],
+      ["fs-api", "Reach firestore.googleapis.com"]
+    ].forEach(function (x) { addRow(x[0], x[1]); });
+  }
+
+  function connectionSnapshot() {
+    var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) {
+      return {
+        supported: false,
+        note: "Network Information API not available in this browser"
+      };
+    }
+    return {
+      supported: true,
+      type: c.type || null,
+      effectiveType: c.effectiveType || null,
+      downlinkMbps: typeof c.downlink === "number" ? c.downlink : null,
+      rttMs: typeof c.rtt === "number" ? c.rtt : null,
+      saveData: !!c.saveData,
+      // downlinkMax is rare; signal strength is not exposed on web for privacy
+      note: "Browsers do not expose cellular dBm; effectiveType / downlink / rtt are the web proxies for signal quality."
+    };
+  }
+
+  function getGeo() {
+    return new Promise(function (resolve) {
+      if (!navigator.geolocation) {
+        resolve({ ok: false, error: "Geolocation API not available" });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          resolve({
+            ok: true,
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracyM: pos.coords.accuracy,
+            altitude: pos.coords.altitude,
+            altitudeAccuracy: pos.coords.altitudeAccuracy,
+            heading: pos.coords.heading,
+            speed: pos.coords.speed,
+            timestamp: pos.timestamp
+          });
+        },
+        function (err) {
+          resolve({ ok: false, error: err.message || String(err), code: err.code });
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    });
+  }
+
+  async function getIpInfo() {
+    var res = await race(fetch("https://ipapi.co/json/", { headers: { Accept: "application/json" } }), 10000, "IP lookup");
+    if (!res.ok) throw new Error("ipapi HTTP " + res.status);
+    return res.json();
+  }
+
+  async function run() {
+    var btn = document.getElementById("btn-run");
+    btn.disabled = true;
+    setupRows();
+    summaryEl.textContent = "Running…";
+    var ok = 0, fail = 0, skip = 0;
+    function tally(s) {
+      if (s === "ok") ok++;
+      else if (s === "fail") fail++;
+      else skip++;
+    }
+
+    // online
+    var on = navigator.onLine !== false;
+    setRow("online", on ? "ok" : "fail", "navigator.onLine = " + on);
+    report.online = on;
+    tally(on ? "ok" : "fail");
+
+    // https
+    var https = location.protocol === "https:" || location.hostname === "localhost";
+    setRow("https", https ? "ok" : "fail", location.protocol + "//" + location.host);
+    report.https = https;
+    tally(https ? "ok" : "fail");
+
+    // connection API
+    var conn = connectionSnapshot();
+    report.connection = conn;
+    if (!conn.supported) {
+      setRow("connection", "skip", conn.note);
+      tally("skip");
+    } else {
+      setRow("connection", "ok",
+        "type=<code>" + (conn.type || "—") + "</code> · effective=<code>" + (conn.effectiveType || "—") +
+        "</code> · downlink=<code>" + (conn.downlinkMbps != null ? conn.downlinkMbps + " Mb/s" : "—") +
+        "</code> · rtt=<code>" + (conn.rttMs != null ? conn.rttMs + " ms" : "—") +
+        "</code> · saveData=<code>" + conn.saveData + "</code><br>" + conn.note);
+      tally("ok");
+    }
+
+    // geo
+    if (document.getElementById("opt-geo").checked) {
+      var geo = await getGeo();
+      report.geolocation = geo;
+      if (geo.ok) {
+        setRow("geo", "ok",
+          "lat <code>" + geo.latitude.toFixed(6) + "</code> · lng <code>" + geo.longitude.toFixed(6) +
+          "</code> · accuracy ±<code>" + Math.round(geo.accuracyM) + " m</code>" +
+          (geo.speed != null ? " · speed <code>" + geo.speed + " m/s</code>" : ""));
+        mapLink.innerHTML = '<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=' +
+          geo.latitude + "," + geo.longitude + '">Open device location in Google Maps</a>';
+        tally("ok");
+      } else {
+        setRow("geo", "fail", (geo.code ? "code " + geo.code + " · " : "") + (geo.error || "denied"));
+        tally("fail");
+      }
+    } else {
+      setRow("geo", "skip", "Unchecked");
+      report.geolocation = { skipped: true };
+      tally("skip");
+    }
+
+    // IP / network location
+    if (document.getElementById("opt-ip").checked) {
+      try {
+        var ip = await getIpInfo();
+        report.ipNetwork = {
+          ip: ip.ip,
+          city: ip.city,
+          region: ip.region,
+          country: ip.country_name || ip.country,
+          postal: ip.postal,
+          latitude: ip.latitude,
+          longitude: ip.longitude,
+          org: ip.org,
+          asn: ip.asn,
+          timezone: ip.timezone
+        };
+        setRow("ip", "ok",
+          "IP <code>" + (ip.ip || "—") + "</code> · " +
+          [ip.city, ip.region, ip.country_name || ip.country].filter(Boolean).join(", ") +
+          " · org <code>" + (ip.org || "—") + "</code>");
+        if (!mapLink.innerHTML && ip.latitude && ip.longitude) {
+          mapLink.innerHTML = '<a target="_blank" rel="noopener" href="https://www.google.com/maps?q=' +
+            ip.latitude + "," + ip.longitude + '">Open network/IP location in Google Maps</a> <span class="meta">(approx.)</span>';
+        }
+        tally("ok");
+      } catch (e) {
+        report.ipNetwork = { error: e.message || String(e) };
+        setRow("ip", "fail", e.message || String(e));
+        tally("fail");
+      }
+    } else {
+      setRow("ip", "skip", "Unchecked");
+      report.ipNetwork = { skipped: true };
+      tally("skip");
+    }
+
+    // CDN
+    if (window.firebase && firebase.app) {
+      setRow("cdn", "ok", "firebase global present");
+      tally("ok");
+      report.firebaseSdk = true;
+    } else {
+      setRow("cdn", "fail", "window.firebase missing");
+      tally("fail");
+      report.firebaseSdk = false;
+    }
+
+    var cfg = window.FIREBASE_CONFIG;
+    if (cfg && cfg.apiKey && cfg.projectId && String(cfg.apiKey).indexOf("PASTE_") !== 0) {
+      setRow("config", "ok", "projectId=<code>" + cfg.projectId + "</code>");
+      report.projectId = cfg.projectId;
+      tally("ok");
+    } else {
+      setRow("config", "fail", "Missing firebase-config.js");
+      tally("fail");
+      finish(ok, fail, skip, btn);
+      return;
+    }
+
+    try {
+      if (!firebase.apps.length) firebase.initializeApp(cfg);
+      setRow("init", "ok", "initialized");
+      tally("ok");
+    } catch (e) {
+      setRow("init", "fail", e.message || String(e));
+      tally("fail");
+      finish(ok, fail, skip, btn);
+      return;
+    }
+
+    var user = null;
+    try {
+      user = await race(new Promise(function (resolve) {
+        if (firebase.auth().currentUser) { resolve(firebase.auth().currentUser); return; }
+        var unsub = firebase.auth().onAuthStateChanged(function (u) { unsub(); resolve(u || null); });
+      }), 8000, "Auth");
+      if (user) {
+        setRow("auth", "ok", "<code>" + (user.email || user.uid) + "</code>");
+        report.auth = { uid: user.uid, email: user.email || null };
+        tally("ok");
+      } else {
+        setRow("auth", "skip", "Not signed in");
+        report.auth = null;
+        tally("skip");
+      }
+    } catch (e) {
+      setRow("auth", "fail", e.message || String(e));
+      tally("fail");
+    }
+
+    try {
+      firebase.firestore().settings({ experimentalForceLongPolling: true, merge: true });
+      setRow("fs-settings", "ok", "experimentalForceLongPolling = true");
+      tally("ok");
+    } catch (e) {
+      setRow("fs-settings", "skip", e.message || "n/a");
+      tally("skip");
+    }
+
+    var db = firebase.firestore();
+    var docPath = user ? "patients/" + user.uid : "patients/_nettest_probe";
+    try {
+      var snap = await race(db.doc(docPath).get(), 15000, "Firestore read");
+      setRow("fs-read", "ok", "get <code>" + docPath + "</code> · exists=" + snap.exists);
+      report.firestoreRead = { path: docPath, exists: snap.exists };
+      tally("ok");
+    } catch (e) {
+      setRow("fs-read", "fail", (e.code ? e.code + " · " : "") + (e.message || e));
+      report.firestoreRead = { path: docPath, error: e.message || String(e), code: e.code || null };
+      tally("fail");
+    }
+
+    var wantWrite = document.getElementById("opt-fs-write").checked;
+    if (user && wantWrite) {
+      try {
+        report.finishedAt = new Date().toISOString();
+        var ref = db.collection("patients").doc(user.uid).collection("_nettest").doc("report");
+        await race(ref.set({
+          report: report,
+          at: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }), 15000, "Firestore write");
+        setRow("fs-write", "ok", "Saved <code>patients/" + user.uid + "/_nettest/report</code>");
+        tally("ok");
+      } catch (e) {
+        setRow("fs-write", "fail", (e.code ? e.code + " · " : "") + (e.message || e));
+        tally("fail");
+      }
+    } else if (user && !wantWrite) {
+      setRow("fs-write", "skip", "Write report unchecked");
+      tally("skip");
+    } else {
+      setRow("fs-write", "skip", "Sign in + enable write to upload report");
+      tally("skip");
+    }
+
+    try {
+      var ctrl = new AbortController();
+      var t = setTimeout(function () { ctrl.abort(); }, 8000);
+      await fetch("https://firestore.googleapis.com/", { method: "GET", mode: "no-cors", signal: ctrl.signal });
+      clearTimeout(t);
+      setRow("fs-api", "ok", "opaque fetch completed");
+      tally("ok");
+    } catch (e) {
+      setRow("fs-api", "fail", e.message || String(e));
+      tally("fail");
+    }
+
+    report.finishedAt = new Date().toISOString();
+    report.counts = { ok: ok, fail: fail, skip: skip };
+    logEl.textContent = JSON.stringify(report, null, 2);
+    finish(ok, fail, skip, btn);
+  }
+
+  function finish(ok, fail, skip, btn) {
+    summaryEl.textContent = "Done · OK " + ok + " · FAIL " + fail + " · SKIP " + skip;
+    if (btn) btn.disabled = false;
+  }
+
+  document.getElementById("btn-run").onclick = run;
+  document.getElementById("btn-copy").onclick = function () {
+    var text = summaryEl.textContent + "\n\n" + (logEl.textContent || JSON.stringify(report, null, 2));
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { alert("Copied"); }).catch(function () { prompt("Copy:", text); });
+    } else prompt("Copy:", text);
+  };
+})();
+  </script>
+</body>
+</html>
